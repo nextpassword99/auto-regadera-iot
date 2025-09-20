@@ -17,12 +17,62 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📊 Historial y Estadísticas"
+            android:text="📊 Historial de Sensores"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textAlignment="center"
             android:layout_marginBottom="24dp"
             android:textColor="@color/text_primary" />
+
+        <!-- Controles de Fecha -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/textSelectedDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Rango: Últimos 7 días"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="16dp"
+                    android:textAlignment="center"
+                    android:textColor="@color/text_primary" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <Button
+                        android:id="@+id/buttonSelectDate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="16dp"
+                        android:text="📅 Seleccionar Rango"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                    <Button
+                        android:id="@+id/buttonLoadData"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📊 Cargar Datos" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Gráfico de Sensores -->
         <com.google.android.material.card.MaterialCardView
@@ -41,56 +91,27 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📈 Historial de Sensores (Últimas 24h)"
+                    android:text="📈 Gráfico de Sensores"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp"
                     android:textColor="@color/text_primary" />
 
-                <!-- Placeholder para el gráfico (MPAndroidChart) -->
-                <LinearLayout
-                    android:id="@+id/chart_container"
+                <!-- Gráfico de sensores (MPAndroidChart) -->
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/sensorChart"
                     android:layout_width="match_parent"
-                    android:layout_height="300dp"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:background="#F5F5F5">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="📊 Gráfico de Sensores"
-                        android:textSize="16sp"
-                        android:textColor="@color/text_secondary" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(Implementar con MPAndroidChart)"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="8dp" />
-
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/btn_refresh_chart"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_marginTop="16dp"
-                    android:text="🔄 Actualizar Gráfico"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    android:layout_height="400dp"
+                    android:layout_marginBottom="8dp" />
 
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Estadísticas por Rango -->
+        <!-- Leyenda de Colores -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
             app:cardCornerRadius="12dp"
             app:cardElevation="4dp">
 
@@ -103,99 +124,36 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📋 Estadísticas por Rango"
+                    android:text="🎨 Leyenda"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp"
                     android:textColor="@color/text_primary" />
 
-                <!-- Selectores de Fecha -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="16dp">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="8dp"
-                        android:hint="Fecha inicio"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/edit_start_date"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:focusable="false"
-                            android:clickable="true" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:hint="Fecha fin"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/edit_end_date"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:focusable="false"
-                            android:clickable="true" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/btn_fetch_stats"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="📊 Consultar Estadísticas" />
-
-                <!-- Resultados de Estadísticas -->
-                <LinearLayout
-                    android:id="@+id/stats_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Resultados:"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp"
-                        android:textColor="@color/text_primary" />
+                    android:orientation="vertical">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         android:layout_marginBottom="8dp">
+
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="3dp"
+                            android:background="@color/humidity_color"
+                            android:layout_marginEnd="8dp" />
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Total de lecturas:"
-                            android:textColor="@color/text_secondary" />
-
-                        <TextView
-                            android:id="@+id/text_total_readings"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="---"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary" />
+                            android:text="Humedad (%)"
+                            android:textSize="14sp" />
 
                     </LinearLayout>
 
@@ -203,68 +161,20 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="20dp"
+                            android:layout_height="3dp"
+                            android:background="@color/light_color"
+                            android:layout_marginEnd="8dp" />
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Humedad promedio:"
-                            android:textColor="@color/text_secondary" />
-
-                        <TextView
-                            android:id="@+id/text_avg_humidity"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="---"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Humedad máxima:"
-                            android:textColor="@color/text_secondary" />
-
-                        <TextView
-                            android:id="@+id/text_max_humidity"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="---"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Humedad mínima:"
-                            android:textColor="@color/text_secondary" />
-
-                        <TextView
-                            android:id="@+id/text_min_humidity"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="---"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary" />
+                            android:text="Nivel de Luz"
+                            android:textSize="14sp" />
 
                     </LinearLayout>
 
@@ -273,15 +183,6 @@
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Indicador de Carga -->
-        <ProgressBar
-            android:id="@+id/progress_bar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="16dp"
-            android:visibility="gone" />
 
     </LinearLayout>
 

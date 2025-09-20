@@ -24,3 +24,10 @@ data class SensorReadingCreate(
     @SerializedName("soil_type")
     val soilType: String
 )
+
+// Clase para datos de sensores extendida para el gráfico
+data class ChartSensorReading(
+    val timestamp: String,
+    val humidity: Float,
+    val lightLevel: Float
+)

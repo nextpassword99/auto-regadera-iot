@@ -22,4 +22,10 @@
     <color name="indicator_disconnected">#F44336</color>
     <color name="indicator_pump_active">#2196F3</color>
     <color name="indicator_pump_inactive">#9E9E9E</color>
+    
+    <!-- Colores para gráficos de sensores -->
+    <color name="temperature_color">#FF5722</color>
+    <color name="humidity_color">#2196F3</color>
+    <color name="soil_moisture_color">#8BC34A</color>
+    <color name="light_color">#FFC107</color>
 </resources>

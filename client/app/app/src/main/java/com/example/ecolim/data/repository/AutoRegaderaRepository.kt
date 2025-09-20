@@ -116,6 +116,35 @@ class AutoRegaderaRepository(private val serverConfigManager: ServerConfigManage
         }
     }
 
+    // Método específico para obtener datos para gráficos por rango de fechas
+    suspend fun getSensorReadingsByDateRange(startDate: String, endDate: String): Result<List<ChartSensorReading>> {
+        return try {
+            val response = apiService.getSensorReadings(
+                skip = 0,
+                limit = 1000, // Límite alto para obtener todos los datos del rango
+                startDate = startDate,
+                endDate = endDate
+            )
+            if (response.isSuccessful && response.body() != null) {
+                val readings = response.body()!!
+                // Convertir SensorReading a ChartSensorReading
+                val chartData = readings.map { reading ->
+                    ChartSensorReading(
+                        timestamp = reading.timestamp,
+                        humidity = reading.humidity.toFloat(),
+                        lightLevel = reading.light.toFloat()  // Mapear 'light' a 'lightLevel'
+                    )
+                }
+                Result.success(chartData)
+            } else {
+                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error obteniendo datos para gráfico: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
     // Método utilitario para obtener datos de las últimas 24 horas
     suspend fun getLast24HoursData(): Result<List<SensorReading>> {
         val endDate = java.time.LocalDateTime.now().toString()

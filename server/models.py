@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Float, DateTime, String, Boolean
 from sqlalchemy.sql import func
-from .database import Base
+from database import Base
 
 class SensorReading(Base):
     __tablename__ = "sensor_readings"
@@ -12,6 +12,9 @@ class SensorReading(Base):
     pump_status = Column(Boolean, nullable=False)
     mode = Column(String, nullable=False)
     soil_type = Column(String, nullable=False)
+
+    def dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 class WateringEvent(Base):
     __tablename__ = "watering_events"

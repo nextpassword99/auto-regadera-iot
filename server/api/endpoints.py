@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
-from .. import crud, schemas
-from ..database import get_db
+import crud, schemas
+from database import get_db
 
 router = APIRouter()
 
@@ -71,7 +71,7 @@ def get_stats_in_range(
     Calcula y devuelve estadísticas agregadas (promedios, min, max)
     para la humedad y la luz en un rango de fechas específico.
     """
-    readings = crud.get_sensor_readings(db, limit=None, start_date=start_date, end_date=end_date) # No limit for stats
+    readings = crud.get_sensor_readings(db, limit=10000, start_date=start_date, end_date=end_date) # Limit to avoid memory issues
     
     if not readings:
         return {"message": f"No hay datos entre {start_date} y {end_date}."}

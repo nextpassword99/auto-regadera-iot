@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 # --- Sensor Reading Schemas ---
@@ -16,8 +16,7 @@ class SensorReading(SensorReadingBase):
     id: int
     timestamp: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Watering Event Schemas ---
 class WateringEventBase(BaseModel):
@@ -31,8 +30,7 @@ class WateringEvent(WateringEventBase):
     id: int
     start_time: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- ESP32 Config Schemas ---
 class ESPConfig(BaseModel):

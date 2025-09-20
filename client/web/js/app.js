@@ -32,9 +32,34 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchLatestReadingBtn: document.getElementById("fetch-latest-reading-btn"),
     sensorHistoryBody: document.getElementById("sensor-history-body"),
     sensorChartCanvas: document.getElementById("sensor-chart"),
+    pumpOnBtn: document.getElementById("pump-on-btn"),
+    pumpOffBtn: document.getElementById("pump-off-btn"),
+    lightThresholdInput: document.getElementById("light-threshold-input"),
+    wateringDurationInput: document.getElementById("watering-duration-input"),
+    wateringIntervalInput: document.getElementById("watering-interval-input"),
+    soilTypeSelect: document.getElementById("soil-type-select"),
+    saveConfigBtn: document.getElementById("save-config-btn"),
   };
 
   let sensorChart;
+
+  async function sendCommand(command) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/esp32/command`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(command),
+      });
+      const result = await response.json();
+      console.log("Comando enviado:", result.message);
+      alert(`Comando enviado: ${result.message}`);
+    } catch (error) {
+      console.error("Error al enviar comando:", error);
+      alert("Error al enviar comando.");
+    }
+  }
 
   function connectWebSocket() {
     const ws = new WebSocket(WS_URL);
@@ -305,6 +330,36 @@ document.addEventListener("DOMContentLoaded", () => {
       "click",
       fetchLatestReading
     );
+
+    elements.pumpOnBtn.addEventListener("click", () =>
+      sendCommand({ command: "start" })
+    );
+    elements.pumpOffBtn.addEventListener("click", () =>
+      sendCommand({ command: "stop" })
+    );
+
+    elements.saveConfigBtn.addEventListener("click", () => {
+      const config = {
+        umbralLuz: parseInt(elements.lightThresholdInput.value),
+        duracionRiego: parseInt(elements.wateringDurationInput.value),
+        intervaloRiego: parseInt(elements.wateringIntervalInput.value) * 60000, // a milisegundos
+        tipoSuelo: elements.soilTypeSelect.value,
+      };
+
+      // Filtrar valores que no son números o están vacíos
+      const validConfig = Object.entries(config).reduce((acc, [key, value]) => {
+        if (value && !isNaN(value) || typeof value === 'string' && value) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      if (Object.keys(validConfig).length > 0) {
+        sendCommand(validConfig);
+      } else {
+        alert("No hay configuraciones válidas para guardar.");
+      }
+    });
   }
 
   initializeChart();

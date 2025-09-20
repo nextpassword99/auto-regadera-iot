@@ -1,14 +1,17 @@
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
 from database import engine, Base, get_db
 from api import endpoints
 from websocket_manager import manager
-import crud, schemas
+import crud
+import schemas
 
 # --- App Initialization ---
+print("🚀 Iniciando la aplicación FastAPI...")
 Base.metadata.create_all(bind=engine)
+print("✔️ Tablas de la base de datos verificadas/creadas.")
 
 app = FastAPI(
     title="Auto-Regadera API",
@@ -18,23 +21,22 @@ app = FastAPI(
 
 # --- API Routers ---
 app.include_router(endpoints.router, prefix="/api/v1", tags=["HTTP Endpoints"])
+print("✔️ Routers de la API HTTP incluidos.")
 
 # --- WebSockets ---
+
+
 @app.websocket("/ws/esp32-ingest")
 async def websocket_ingest_endpoint(websocket: WebSocket):
-    """
-    Endpoint de WebSocket para que el ESP32 envíe datos.
-    Los datos recibidos se guardan en la BD y se retransmiten a los clientes.
-    """
     await manager.connect(websocket, channel="esp32")
+    print("🔌 ESP32 conectado al WebSocket de ingesta.")
     db: Session = next(get_db())
     try:
         while True:
             data = await websocket.receive_text()
+            print(f"📩 Datos recibidos del ESP32: {data}")
             try:
-                # 1. Parsear el JSON recibido del ESP32
                 payload = json.loads(data)
-                # Renombrar claves para que coincidan con el esquema Pydantic
                 reading_data = schemas.SensorReadingCreate(
                     humidity=payload.get('humedad'),
                     light=payload.get('luz'),
@@ -42,25 +44,29 @@ async def websocket_ingest_endpoint(websocket: WebSocket):
                     mode=payload.get('modo'),
                     soil_type=payload.get('suelo')
                 )
-                
-                # 2. Guardar en la base de datos
-                db_reading = crud.create_sensor_reading(db=db, reading=reading_data)
-                
-                # 3. Convertir el objeto ORM a un diccionario antes de la serialización
-                reading_dict = schemas.SensorReading.from_orm(db_reading).dict()
+                print("✅ Datos parseados y validados.")
 
-                # 4. Retransmitir a los clientes de la UI
-                await manager.broadcast_json(reading_dict, channel="ui_clients")
+                db_reading = crud.create_sensor_reading(
+                    db=db, reading=reading_data)
+
+                reading_dict = schemas.SensorReading.from_orm(
+                    db_reading).dict()
+
+                ui_clients_count = len(
+                    manager.active_connections.get('ui_clients', []))
+                if ui_clients_count > 0:
+                    await manager.broadcast_json(reading_dict, channel="ui_clients")
+                    print(
+                        f"📡 Retransmitiendo a {ui_clients_count} clientes UI.")
 
             except json.JSONDecodeError:
-                # Este mensaje es solo para el ESP, no para los clientes UI
-                await websocket.send_text(f"Error: Mensaje no es un JSON válido: {data}")
+                print(f"❌ JSON inválido recibido del ESP32: {data}")
             except Exception as e:
-                # Manejar errores de validación o de base de datos
-                await websocket.send_text(f"Error procesando el mensaje: {e}")
+                print(f"❌ Error procesando mensaje del ESP32: {e}")
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, channel="esp32")
+        print("🔌 ESP32 desconectado.")
         await manager.broadcast_text("Un ESP32 se ha desconectado.", channel="ui_clients")
     finally:
         db.close()
@@ -68,26 +74,26 @@ async def websocket_ingest_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/ui-feed")
 async def websocket_ui_feed_endpoint(websocket: WebSocket):
-    """
-    Endpoint de WebSocket para que las aplicaciones cliente (móvil/web) se conecten
-    y reciban actualizaciones de datos en tiempo real.
-    """
     await manager.connect(websocket, channel="ui_clients")
+    ui_clients_count = len(manager.active_connections.get('ui_clients', []))
+    print(f"🖥️  Nuevo cliente UI conectado. Total: {ui_clients_count}")
     db: Session = next(get_db())
     try:
-        # Enviar el último estado conocido al cliente recién conectado
         latest_reading = crud.get_latest_sensor_reading(db)
         if latest_reading:
-            reading_dict = schemas.SensorReading.from_orm(latest_reading).dict()
+            reading_dict = schemas.SensorReading.from_orm(
+                latest_reading).dict()
             await websocket.send_json(reading_dict)
-        
-        # Mantener la conexión abierta para recibir actualizaciones
+            print(
+                f"📈 Enviando último estado al nuevo cliente UI (ID: {latest_reading.id}).")
+
         while True:
-            # Simplemente esperamos a que el cliente se desconecte
-            await websocket.receive_text() 
+            await websocket.receive_text()
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, channel="ui_clients")
+        print(
+            f"🖥️  Cliente UI desconectado. Restantes: {len(manager.active_connections.get('ui_clients', []))}")
     finally:
         db.close()
 
@@ -95,4 +101,8 @@ async def websocket_ui_feed_endpoint(websocket: WebSocket):
 # --- Root Endpoint ---
 @app.get("/", tags=["Root"])
 def read_root():
+    print("🌐 Endpoint raíz '/' fue accedido.")
     return {"message": "Bienvenido a la API de Auto-Regadera"}
+
+
+print("🎉 Aplicación lista para recibir conexiones.")

@@ -10,10 +10,7 @@ router = APIRouter()
 
 @router.post("/readings/", response_model=schemas.SensorReading, summary="Registrar nueva lectura de sensor (HTTP)")
 def create_sensor_reading_endpoint(reading: schemas.SensorReadingCreate, db: Session = Depends(get_db)):
-    """
-    Endpoint para que un cliente publique una nueva lectura de los sensores vía HTTP.
-    Esta información se almacenará en la base de datos.
-    """
+    print(f"🌐 HTTP POST /readings/ | Datos: {reading.dict()}")
     return crud.create_sensor_reading(db=db, reading=reading)
 
 @router.get("/readings/", response_model=List[schemas.SensorReading], summary="Obtener lecturas con filtros")
@@ -24,17 +21,13 @@ def read_sensor_readings_endpoint(
     end_date: Optional[datetime] = Query(None, description="Fecha de fin (formato ISO)"),
     db: Session = Depends(get_db)
 ):
-    """
-    Obtiene una lista de lecturas de sensores, con opción de paginación y filtrado por rango de fechas.
-    """
+    print(f"🌐 HTTP GET /readings/ | Parámetros: skip={skip}, limit={limit}, start_date={start_date}, end_date={end_date}")
     readings = crud.get_sensor_readings(db, skip=skip, limit=limit, start_date=start_date, end_date=end_date)
     return readings
 
 @router.get("/readings/latest/", response_model=schemas.SensorReading, summary="Obtener la lectura más reciente")
 def read_latest_sensor_reading_endpoint(db: Session = Depends(get_db)):
-    """
-    Devuelve el último estado reportado por los sensores.
-    """
+    print("🌐 HTTP GET /readings/latest/")
     db_reading = crud.get_latest_sensor_reading(db)
     if db_reading is None:
         raise HTTPException(status_code=404, detail="No hay lecturas disponibles")
@@ -42,9 +35,7 @@ def read_latest_sensor_reading_endpoint(db: Session = Depends(get_db)):
 
 @router.post("/watering-events/", response_model=schemas.WateringEvent, summary="Registrar un evento de riego")
 def create_watering_event_endpoint(event: schemas.WateringEventCreate, db: Session = Depends(get_db)):
-    """
-    Registra un evento de riego, ya sea manual o automático.
-    """
+    print(f"🌐 HTTP POST /watering-events/ | Datos: {event.dict()}")
     return crud.create_watering_event(db=db, event=event)
 
 @router.get("/watering-events/", response_model=List[schemas.WateringEvent], summary="Obtener historial de riegos")
@@ -55,9 +46,7 @@ def read_watering_events_endpoint(
     end_date: Optional[datetime] = Query(None, description="Fecha de fin (formato ISO)"),
     db: Session = Depends(get_db)
 ):
-    """
-    Devuelve una lista de los últimos eventos de riego, con opción de filtrar por fecha.
-    """
+    print(f"🌐 HTTP GET /watering-events/ | Parámetros: skip={skip}, limit={limit}, start_date={start_date}, end_date={end_date}")
     events = crud.get_watering_events(db, skip=skip, limit=limit, start_date=start_date, end_date=end_date)
     return events
 
@@ -67,11 +56,8 @@ def get_stats_in_range(
     end_date: datetime = Query(..., description="Fecha de fin (formato ISO)"),
     db: Session = Depends(get_db)
 ):
-    """
-    Calcula y devuelve estadísticas agregadas (promedios, min, max)
-    para la humedad y la luz en un rango de fechas específico.
-    """
-    readings = crud.get_sensor_readings(db, limit=10000, start_date=start_date, end_date=end_date) # Limit to avoid memory issues
+    print(f"🌐 HTTP GET /stats/ | Parámetros: start_date={start_date}, end_date={end_date}")
+    readings = crud.get_sensor_readings(db, limit=10000, start_date=start_date, end_date=end_date)
     
     if not readings:
         return {"message": f"No hay datos entre {start_date} y {end_date}."}
@@ -82,9 +68,11 @@ def get_stats_in_range(
     max_humidity = max(r.humidity for r in readings)
     min_humidity = min(r.humidity for r in readings)
     
-    return {
-        "time_range": {"start": start_date, "end": end_date},
+    stats = {
+        "time_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
         "total_readings": total_readings,
         "humidity": {"average": f"{avg_humidity:.2f}", "max": max_humidity, "min": min_humidity},
         "light": {"average": f"{avg_light:.2f}"}
     }
+    print(f"📊 Stats calculadas: {stats}")
+    return stats

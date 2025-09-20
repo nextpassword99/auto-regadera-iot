@@ -6,6 +6,7 @@ from datetime import datetime
 import crud
 import schemas
 from database import get_db
+from websocket_manager import manager
 
 router = APIRouter()
 
@@ -95,3 +96,12 @@ def get_stats_in_range(
     }
     print(f"📊 Stats calculadas: {stats}")
     return stats
+
+@router.post("/esp32/command", summary="Enviar comando al ESP32")
+async def send_command_to_esp32(command: dict):
+    if "command" in command and isinstance(command["command"], str):
+        await manager.broadcast(command["command"], channel="esp32")
+        return {"message": f"Command '{command['command']}' sent to ESP32."}
+    else:
+        await manager.broadcast_json(command, channel="esp32")
+        return {"message": f"JSON command sent to ESP32: {command}"}

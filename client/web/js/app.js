@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const MAX_LIGHT_VALUE = 4095;
   const WS_URL = "ws://127.0.0.1:8000/ws/ui-feed";
   const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
@@ -24,29 +25,18 @@ document.addEventListener("DOMContentLoaded", () => {
   let sensorChart;
 
   function connectWebSocket() {
-    console.log("Intentando conectar al WebSocket...");
     const ws = new WebSocket(WS_URL);
-
-    ws.onopen = () => {
-      console.log("WebSocket conectado exitosamente.");
-      updateConnectionStatus(true);
-    };
-
+    ws.onopen = () => updateConnectionStatus(true);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("Datos recibidos via WebSocket:", data);
+      data.light = MAX_LIGHT_VALUE - data.light;
       updateLiveCards(data);
       updateChart(data);
     };
-
     ws.onclose = () => {
-      console.log(
-        "WebSocket desconectado. Intentando reconectar en 3 segundos..."
-      );
       updateConnectionStatus(false);
       setTimeout(connectWebSocket, 3000);
     };
-
     ws.onerror = (error) => {
       console.error("Error en WebSocket:", error);
       ws.close();
@@ -54,59 +44,44 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateConnectionStatus(isConnected) {
-    if (isConnected) {
-      elements.connectionStatusText.textContent = "Conectado";
-      elements.connectionStatusIndicator.classList.remove(
-        "bg-red-500",
-        "animate-pulse"
-      );
-      elements.connectionStatusIndicator.classList.add("bg-green-500");
-    } else {
-      elements.connectionStatusText.textContent = "Desconectado";
-      elements.connectionStatusIndicator.classList.remove("bg-green-500");
-      elements.connectionStatusIndicator.classList.add(
-        "bg-red-500",
-        "animate-pulse"
-      );
-    }
+    elements.connectionStatusText.textContent = isConnected
+      ? "Conectado"
+      : "Desconectado";
+    elements.connectionStatusIndicator.className = isConnected
+      ? "bg-green-500 rounded-full w-4 h-4"
+      : "bg-red-500 rounded-full w-4 h-4 animate-pulse";
   }
 
   function updateLiveCards(data) {
     elements.liveHumidity.textContent = data.humidity.toFixed(1);
-    elements.liveLight.textContent = data.light.toFixed(1);
+    elements.liveLight.textContent = (4095 - data.light).toFixed(1);
     elements.liveMode.textContent = data.mode;
     elements.liveSoil.textContent = `Tipo de suelo: ${data.soil_type}`;
     if (data.pump_status) {
       elements.livePumpStatus.textContent = "Activa";
-      elements.livePumpIndicator.classList.remove("bg-gray-600");
-      elements.livePumpIndicator.classList.add("bg-blue-500", "animate-pulse");
+      elements.livePumpIndicator.className =
+        "bg-blue-500 animate-pulse mr-3 rounded-full w-6 h-6";
     } else {
       elements.livePumpStatus.textContent = "Inactiva";
-      elements.livePumpIndicator.classList.remove(
-        "bg-blue-500",
-        "animate-pulse"
-      );
-      elements.livePumpIndicator.classList.add("bg-gray-600");
+      elements.livePumpIndicator.className =
+        "bg-gray-600 mr-3 rounded-full w-6 h-6";
     }
   }
 
   async function fetchWateringHistory() {
     try {
       const response = await fetch(`${API_BASE_URL}/watering-events/?limit=10`);
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
       const events = await response.json();
-
       elements.wateringHistoryBody.innerHTML = "";
       events.forEach((event) => {
         const row = `
-                    <tr class="bg-gray-800 border-b border-gray-700">
-                        <td class="px-4 py-2">${new Date(
-                          event.start_time
-                        ).toLocaleString()}</td>
-                        <td class="px-4 py-2">${event.duration_seconds}s</td>
-                        <td class="px-4 py-2 capitalize">${event.reason}</td>
-                    </tr>`;
+          <tr class="bg-gray-800 border-b border-gray-700">
+            <td class="px-4 py-2">${new Date(
+              event.start_time
+            ).toLocaleString()}</td>
+            <td class="px-4 py-2">${event.duration_seconds}s</td>
+            <td class="px-4 py-2 capitalize">${event.reason}</td>
+          </tr>`;
         elements.wateringHistoryBody.innerHTML += row;
       });
     } catch (error) {
@@ -123,8 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(
         `${API_BASE_URL}/stats/?start_date=${start.toISOString()}&end_date=${end.toISOString()}`
       );
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
       const stats = await response.json();
 
       if (stats.message) {
@@ -132,19 +105,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const correctedLight = (MAX_LIGHT_VALUE - stats.light.average).toFixed(1);
+
       elements.statsResults.innerHTML = `
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <h3 class="text-sm font-semibold text-gray-400">Humedad Promedio</h3>
-                    <p class="text-2xl font-bold text-cyan-400">${stats.humidity.average}</p>
-                </div>
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <h3 class="text-sm font-semibold text-gray-400">Luz Promedio</h3>
-                    <p class="text-2xl font-bold text-amber-400">${stats.light.average}</p>
-                </div>
-            `;
+        <div class="bg-gray-700 p-3 rounded-lg">
+          <h3 class="text-sm font-semibold text-gray-400">Humedad Promedio</h3>
+          <p class="text-2xl font-bold text-cyan-400">${stats.humidity.average.toFixed(
+            1
+          )}</p>
+        </div>
+        <div class="bg-gray-700 p-3 rounded-lg">
+          <h3 class="text-sm font-semibold text-gray-400">Luz Promedio</h3>
+          <p class="text-2xl font-bold text-amber-400">${correctedLight}</p>
+        </div>
+      `;
     } catch (error) {
       console.error("Error al obtener estadísticas:", error);
-      elements.statsResults.innerHTML = `<p class="col-span-2 text-red-500">Error al cargar datos.</p>`;
     }
   }
 
@@ -183,16 +159,12 @@ document.addEventListener("DOMContentLoaded", () => {
             grid: { color: "#374151" },
           },
           y: {
-            type: "linear",
-            display: true,
             position: "left",
             title: { display: true, text: "Humedad", color: "#67e8f9" },
             ticks: { color: "#9ca3af" },
             grid: { color: "#374151" },
           },
           y1: {
-            type: "linear",
-            display: true,
             position: "right",
             title: { display: true, text: "Luz", color: "#facc15" },
             ticks: { color: "#9ca3af" },
@@ -213,14 +185,16 @@ document.addEventListener("DOMContentLoaded", () => {
       `${API_BASE_URL}/readings/?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&limit=200`
     );
     const data = await response.json();
-    data.reverse().forEach((reading) => updateChart(reading));
+    data.reverse().forEach((reading) => {
+      reading.light = MAX_LIGHT_VALUE - reading.light;
+      updateChart(reading);
+    });
   }
 
   function updateChart(newData) {
     if (!sensorChart) return;
 
     const label = new Date(newData.timestamp).toLocaleTimeString();
-
     sensorChart.data.labels.push(label);
     sensorChart.data.datasets[0].data.push(newData.humidity);
     sensorChart.data.datasets[1].data.push(newData.light);
@@ -234,13 +208,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function initializeDatePickers() {
-    const commonOptions = {
+    const options = {
       enableTime: true,
       dateFormat: "Y-m-d H:i",
       theme: "dark",
     };
-    flatpickr(elements.startDatePicker, commonOptions);
-    flatpickr(elements.endDatePicker, commonOptions);
+    flatpickr(elements.startDatePicker, options);
+    flatpickr(elements.endDatePicker, options);
   }
 
   function initializeEventListeners() {

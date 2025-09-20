@@ -7,10 +7,8 @@
       content="width=device-width, initial-scale=1.0"
     />
     <title>Dashboard | Auto-Regadera</title>
-    <link
-      href="./css/style.css"
-      rel="stylesheet"
-    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link
       rel="stylesheet"
@@ -106,6 +104,49 @@
           <div
             class="md:col-span-2 lg:col-span-4 bg-gray-800 shadow-lg p-5 rounded-lg"
           >
+            <h2 class="mb-4 font-semibold text-gray-400 text-lg">
+              Controles del Dispositivo
+            </h2>
+            <div class="gap-6 grid grid-cols-1 md:grid-cols-2">
+              <div>
+                <h3 class="mb-2 font-semibold text-gray-400">Control Manual de la Bomba</h3>
+                <div class="flex gap-4">
+                  <button id="pump-on-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold text-white w-full">Encender</button>
+                  <button id="pump-off-btn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-white w-full">Apagar</button>
+                </div>
+              </div>
+              <div>
+                <h3 class="mb-2 font-semibold text-gray-400">Configuración General</h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label for="light-threshold-input" class="block text-sm font-medium text-gray-300">Umbral de Luz</label>
+                    <input type="number" id="light-threshold-input" class="bg-gray-700 mt-1 px-3 py-2 border border-gray-600 rounded w-full text-white" placeholder="2000">
+                  </div>
+                  <div>
+                    <label for="watering-duration-input" class="block text-sm font-medium text-gray-300">Duración Riego (s)</label>
+                    <input type="number" id="watering-duration-input" class="bg-gray-700 mt-1 px-3 py-2 border border-gray-600 rounded w-full text-white" placeholder="5">
+                  </div>
+                  <div>
+                    <label for="watering-interval-input" class="block text-sm font-medium text-gray-300">Intervalo Riego (min)</label>
+                    <input type="number" id="watering-interval-input" class="bg-gray-700 mt-1 px-3 py-2 border border-gray-600 rounded w-full text-white" placeholder="60">
+                  </div>
+                  <div>
+                    <label for="soil-type-select" class="block text-sm font-medium text-gray-300">Tipo de Suelo</label>
+                    <select id="soil-type-select" class="bg-gray-700 mt-1 px-3 py-2 border border-gray-600 rounded w-full text-white">
+                      <option value="arenoso">Arenoso</option>
+                      <option value="franco">Franco</option>
+                      <option value="arcilloso">Arcilloso</option>
+                    </select>
+                  </div>
+                </div>
+                <button id="save-config-btn" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded font-bold text-white w-full mt-4">Guardar Configuración</button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="md:col-span-2 lg:col-span-4 bg-gray-800 shadow-lg p-5 rounded-lg"
+          >
             <h2 class="mb-3 font-semibold text-gray-400 text-lg">
               Historial de Sensores (Últimas 24h)
             </h2>
@@ -120,13 +161,13 @@
             </h2>
             <div class="flex sm:flex-row flex-col gap-4 mb-4">
               <input
-                id="start-date-picker"
+                id="start-date-picker-stats"
                 type="text"
                 placeholder="Fecha de inicio"
                 class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
               />
               <input
-                id="end-date-picker"
+                id="end-date-picker-stats"
                 type="text"
                 placeholder="Fecha de fin"
                 class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
@@ -148,8 +189,28 @@
             class="md:col-span-2 lg:col-span-2 bg-gray-800 shadow-lg p-5 rounded-lg"
           >
             <h2 class="mb-4 font-semibold text-gray-400 text-lg">
-              Últimos Eventos de Riego
+              Eventos de Riego
             </h2>
+            <div class="flex sm:flex-row flex-col gap-4 mb-4">
+              <input
+                id="start-date-picker-watering"
+                type="text"
+                placeholder="Fecha de inicio"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <input
+                id="end-date-picker-watering"
+                type="text"
+                placeholder="Fecha de fin"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <button
+                id="fetch-watering-btn"
+                class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded w-full sm:w-auto font-bold text-white"
+              >
+                Consultar
+              </button>
+            </div>
             <div class="max-h-60 overflow-auto">
               <table class="w-full text-sm text-left">
                 <thead class="bg-gray-700 text-gray-400 text-xs uppercase">
@@ -175,6 +236,67 @@
                   </tr>
                 </thead>
                 <tbody id="watering-history-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div
+            class="md:col-span-2 lg:col-span-4 bg-gray-800 shadow-lg p-5 rounded-lg"
+          >
+            <h2 class="mb-4 font-semibold text-gray-400 text-lg">
+              Historial de Lecturas de Sensores
+            </h2>
+            <div class="flex sm:flex-row flex-col gap-4 mb-4">
+              <input
+                id="start-date-picker-readings"
+                type="text"
+                placeholder="Fecha de inicio"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <input
+                id="end-date-picker-readings"
+                type="text"
+                placeholder="Fecha de fin"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <button
+                id="fetch-readings-btn"
+                class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded w-full sm:w-auto font-bold text-white"
+              >
+                Consultar
+              </button>
+              <button
+                id="fetch-latest-reading-btn"
+                class="bg-sky-600 hover:bg-sky-700 px-4 py-2 rounded w-full sm:w-auto font-bold text-white"
+              >
+                Última Lectura
+              </button>
+            </div>
+            <div class="max-h-96 overflow-auto">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-gray-700 text-gray-400 text-xs uppercase">
+                  <tr>
+                    <th
+                      scope="col"
+                      class="px-4 py-2"
+                    >
+                      Fecha y Hora
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-4 py-2"
+                    >
+                      Humedad
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-4 py-2"
+                    >
+                      Luz
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="sensor-history-body"></tbody>
               </table>
             </div>
           </div>

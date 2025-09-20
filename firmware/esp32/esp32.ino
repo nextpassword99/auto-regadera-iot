@@ -81,7 +81,7 @@ void loop()
 
         Serial.printf("📊 Lectura actual -> Humedad: %d | Luz: %d\n", humedad, luz);
 
-        if (humedad > obtenerUmbralHumedad() && luz >= umbralLuz)
+        if (humedad > obtenerUmbralHumedad() && luz <= umbralLuz)
         {
             Serial.println("🚿 Riego automático activado");
             encenderBomba();
@@ -137,15 +137,72 @@ void manejarWebSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         Serial.print("📨 Mensaje recibido del servidor: ");
         Serial.println((char *)payload);
 
-        if (strcmp((char *)payload, "start") == 0)
+        DynamicJsonDocument doc(256);
+        DeserializationError error = deserializeJson(doc, payload, length);
+
+        if (!error)
+        {
+
+            if (doc.is<const char *>() && strcmp(doc.as<const char *>(), "start") == 0)
         {
             modoManual = true;
             encenderBomba();
         }
-        else if (strcmp((char *)payload, "stop") == 0)
+            else if (doc.is<const char *>() && strcmp(doc.as<const char *>(), "stop") == 0)
         {
             modoManual = false;
             apagarBomba();
+            }
+            else
+            {
+
+                if (doc.containsKey("umbralLuz"))
+                {
+                    umbralLuz = doc["umbralLuz"];
+                    Serial.printf("⚙️ umbralLuz actualizado a %d\n", umbralLuz);
+                }
+                if (doc.containsKey("duracionRiego"))
+                {
+                    duracionRiego = doc["duracionRiego"];
+                    Serial.printf("⚙️ duracionRiego actualizado a %d\n", duracionRiego);
+                }
+                if (doc.containsKey("intervaloRiego"))
+                {
+                    intervaloRiego = doc["intervaloRiego"];
+                    Serial.printf("⚙️ intervaloRiego actualizado a %lu\n", intervaloRiego);
+                }
+                if (doc.containsKey("modoManual"))
+                {
+                    modoManual = doc["modoManual"];
+                    Serial.printf("⚙️ modoManual actualizado a %s\n", modoManual ? "true" : "false");
+                    if (modoManual)
+                    {
+                        encenderBomba();
+                    }
+                    else
+                    {
+                        apagarBomba();
+                    }
+                }
+                if (doc.containsKey("tipoSuelo"))
+                {
+                    String suelo = doc["tipoSuelo"].as<const char *>();
+                    if (suelo == "arenoso")
+                        tipoSuelo = ARENOSO;
+                    else if (suelo == "franco")
+                        tipoSuelo = FRANCO;
+                    else if (suelo == "arcilloso")
+                        tipoSuelo = ARCILLOSO;
+                    else
+                        Serial.println("⚠️ Tipo de suelo desconocido");
+
+                    Serial.printf("⚙️ tipoSuelo actualizado a %s\n", suelo.c_str());
+                }
+            }
+        }
+        else
+        {
+            Serial.println("⚠️ No se pudo parsear JSON");
         }
         break;
 

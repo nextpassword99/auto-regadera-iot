@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const MAX_LIGHT_VALUE = 4095;
   const WS_URL = "ws://127.0.0.1:8000/ws/ui-feed";
   const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
@@ -13,40 +14,66 @@ document.addEventListener("DOMContentLoaded", () => {
     liveSoil: document.getElementById("live-soil"),
     livePumpIndicator: document.getElementById("live-pump-indicator"),
     livePumpStatus: document.getElementById("live-pump-status"),
-    startDatePicker: document.getElementById("start-date-picker"),
-    endDatePicker: document.getElementById("end-date-picker"),
+    startDatePickerStats: document.getElementById("start-date-picker-stats"),
+    endDatePickerStats: document.getElementById("end-date-picker-stats"),
     fetchStatsBtn: document.getElementById("fetch-stats-btn"),
     statsResults: document.getElementById("stats-results"),
+    startDatePickerWatering: document.getElementById(
+      "start-date-picker-watering"
+    ),
+    endDatePickerWatering: document.getElementById("end-date-picker-watering"),
+    fetchWateringBtn: document.getElementById("fetch-watering-btn"),
     wateringHistoryBody: document.getElementById("watering-history-body"),
+    startDatePickerReadings: document.getElementById(
+      "start-date-picker-readings"
+    ),
+    endDatePickerReadings: document.getElementById("end-date-picker-readings"),
+    fetchReadingsBtn: document.getElementById("fetch-readings-btn"),
+    fetchLatestReadingBtn: document.getElementById("fetch-latest-reading-btn"),
+    sensorHistoryBody: document.getElementById("sensor-history-body"),
     sensorChartCanvas: document.getElementById("sensor-chart"),
+    pumpOnBtn: document.getElementById("pump-on-btn"),
+    pumpOffBtn: document.getElementById("pump-off-btn"),
+    lightThresholdInput: document.getElementById("light-threshold-input"),
+    wateringDurationInput: document.getElementById("watering-duration-input"),
+    wateringIntervalInput: document.getElementById("watering-interval-input"),
+    soilTypeSelect: document.getElementById("soil-type-select"),
+    saveConfigBtn: document.getElementById("save-config-btn"),
   };
 
   let sensorChart;
 
+  async function sendCommand(command) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/esp32/command`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(command),
+      });
+      const result = await response.json();
+      console.log("Comando enviado:", result.message);
+      alert(`Comando enviado: ${result.message}`);
+    } catch (error) {
+      console.error("Error al enviar comando:", error);
+      alert("Error al enviar comando.");
+    }
+  }
+
   function connectWebSocket() {
-    console.log("Intentando conectar al WebSocket...");
     const ws = new WebSocket(WS_URL);
-
-    ws.onopen = () => {
-      console.log("WebSocket conectado exitosamente.");
-      updateConnectionStatus(true);
-    };
-
+    ws.onopen = () => updateConnectionStatus(true);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("Datos recibidos via WebSocket:", data);
+      data.light = MAX_LIGHT_VALUE - data.light;
       updateLiveCards(data);
       updateChart(data);
     };
-
     ws.onclose = () => {
-      console.log(
-        "WebSocket desconectado. Intentando reconectar en 3 segundos..."
-      );
       updateConnectionStatus(false);
       setTimeout(connectWebSocket, 3000);
     };
-
     ws.onerror = (error) => {
       console.error("Error en WebSocket:", error);
       ws.close();
@@ -54,21 +81,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateConnectionStatus(isConnected) {
-    if (isConnected) {
-      elements.connectionStatusText.textContent = "Conectado";
-      elements.connectionStatusIndicator.classList.remove(
-        "bg-red-500",
-        "animate-pulse"
-      );
-      elements.connectionStatusIndicator.classList.add("bg-green-500");
-    } else {
-      elements.connectionStatusText.textContent = "Desconectado";
-      elements.connectionStatusIndicator.classList.remove("bg-green-500");
-      elements.connectionStatusIndicator.classList.add(
-        "bg-red-500",
-        "animate-pulse"
-      );
-    }
+    elements.connectionStatusText.textContent = isConnected
+      ? "Conectado"
+      : "Desconectado";
+    elements.connectionStatusIndicator.className = isConnected
+      ? "bg-green-500 rounded-full w-4 h-4"
+      : "bg-red-500 rounded-full w-4 h-4 animate-pulse";
   }
 
   function updateLiveCards(data) {
@@ -78,39 +96,80 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.liveSoil.textContent = `Tipo de suelo: ${data.soil_type}`;
     if (data.pump_status) {
       elements.livePumpStatus.textContent = "Activa";
-      elements.livePumpIndicator.classList.remove("bg-gray-600");
-      elements.livePumpIndicator.classList.add("bg-blue-500", "animate-pulse");
+      elements.livePumpIndicator.className =
+        "bg-blue-500 animate-pulse mr-3 rounded-full w-6 h-6";
     } else {
       elements.livePumpStatus.textContent = "Inactiva";
-      elements.livePumpIndicator.classList.remove(
-        "bg-blue-500",
-        "animate-pulse"
-      );
-      elements.livePumpIndicator.classList.add("bg-gray-600");
+      elements.livePumpIndicator.className =
+        "bg-gray-600 mr-3 rounded-full w-6 h-6";
     }
   }
 
-  async function fetchWateringHistory() {
+  async function fetchWateringHistory(start, end) {
     try {
-      const response = await fetch(`${API_BASE_URL}/watering-events/?limit=10`);
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      let url = `${API_BASE_URL}/watering-events/?limit=10`;
+      if (start && end) {
+        url = `${API_BASE_URL}/watering-events/?start_date=${start.toISOString()}&end_date=${end.toISOString()}`;
+      }
+      const response = await fetch(url);
       const events = await response.json();
-
       elements.wateringHistoryBody.innerHTML = "";
       events.forEach((event) => {
         const row = `
-                    <tr class="bg-gray-800 border-b border-gray-700">
-                        <td class="px-4 py-2">${new Date(
-                          event.start_time
-                        ).toLocaleString()}</td>
-                        <td class="px-4 py-2">${event.duration_seconds}s</td>
-                        <td class="px-4 py-2 capitalize">${event.reason}</td>
-                    </tr>`;
+          <tr class="bg-gray-800 border-b border-gray-700">
+            <td class="px-4 py-2">${new Date(
+              event.start_time
+            ).toLocaleString()}</td>
+            <td class="px-4 py-2">${event.duration_seconds}s</td>
+            <td class="px-4 py-2 capitalize">${event.reason}</td>
+          </tr>`;
         elements.wateringHistoryBody.innerHTML += row;
       });
     } catch (error) {
       console.error("Error al obtener historial de riego:", error);
+    }
+  }
+
+  async function fetchSensorHistory(start, end) {
+    try {
+      let url = `${API_BASE_URL}/readings/?limit=20`;
+      if (start && end) {
+        url = `${API_BASE_URL}/readings/?start_date=${start.toISOString()}&end_date=${end.toISOString()}`;
+      }
+      const response = await fetch(url);
+      const readings = await response.json();
+      elements.sensorHistoryBody.innerHTML = "";
+      readings.forEach((reading) => {
+        const row = `
+          <tr class="bg-gray-800 border-b border-gray-700">
+            <td class="px-4 py-2">${new Date(
+              reading.timestamp
+            ).toLocaleString()}</td>
+            <td class="px-4 py-2">${reading.humidity.toFixed(1)}</td>
+            <td class="px-4 py-2">${(MAX_LIGHT_VALUE - reading.light).toFixed(
+              1
+            )}</td>
+          </tr>`;
+        elements.sensorHistoryBody.innerHTML += row;
+      });
+    } catch (error) {
+      console.error("Error al obtener historial de lecturas:", error);
+    }
+  }
+
+  async function fetchLatestReading() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/readings/latest/`);
+      const reading = await response.json();
+      reading.light = MAX_LIGHT_VALUE - reading.light;
+      updateLiveCards(reading);
+      alert(
+        `Última lectura obtenida a las ${new Date(
+          reading.timestamp
+        ).toLocaleTimeString()}`
+      );
+    } catch (error) {
+      console.error("Error al obtener la última lectura:", error);
     }
   }
 
@@ -123,8 +182,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(
         `${API_BASE_URL}/stats/?start_date=${start.toISOString()}&end_date=${end.toISOString()}`
       );
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
       const stats = await response.json();
 
       if (stats.message) {
@@ -132,19 +189,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const correctedLight = (MAX_LIGHT_VALUE - stats.light.average).toFixed(1);
+
       elements.statsResults.innerHTML = `
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <h3 class="text-sm font-semibold text-gray-400">Humedad Promedio</h3>
-                    <p class="text-2xl font-bold text-cyan-400">${stats.humidity.average}</p>
-                </div>
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <h3 class="text-sm font-semibold text-gray-400">Luz Promedio</h3>
-                    <p class="text-2xl font-bold text-amber-400">${stats.light.average}</p>
-                </div>
-            `;
+        <div class="bg-gray-700 p-3 rounded-lg">
+          <h3 class="text-sm font-semibold text-gray-400">Humedad Promedio</h3>
+          <p class="text-2xl font-bold text-cyan-400">${stats.humidity.average.toFixed(
+            1
+          )}</p>
+        </div>
+        <div class="bg-gray-700 p-3 rounded-lg">
+          <h3 class="text-sm font-semibold text-gray-400">Luz Promedio</h3>
+          <p class="text-2xl font-bold text-amber-400">${correctedLight}</p>
+        </div>
+      `;
     } catch (error) {
       console.error("Error al obtener estadísticas:", error);
-      elements.statsResults.innerHTML = `<p class="col-span-2 text-red-500">Error al cargar datos.</p>`;
     }
   }
 
@@ -183,16 +243,12 @@ document.addEventListener("DOMContentLoaded", () => {
             grid: { color: "#374151" },
           },
           y: {
-            type: "linear",
-            display: true,
             position: "left",
             title: { display: true, text: "Humedad", color: "#67e8f9" },
             ticks: { color: "#9ca3af" },
             grid: { color: "#374151" },
           },
           y1: {
-            type: "linear",
-            display: true,
             position: "right",
             title: { display: true, text: "Luz", color: "#facc15" },
             ticks: { color: "#9ca3af" },
@@ -213,14 +269,16 @@ document.addEventListener("DOMContentLoaded", () => {
       `${API_BASE_URL}/readings/?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&limit=200`
     );
     const data = await response.json();
-    data.reverse().forEach((reading) => updateChart(reading));
+    data.reverse().forEach((reading) => {
+      reading.light = MAX_LIGHT_VALUE - reading.light;
+      updateChart(reading);
+    });
   }
 
   function updateChart(newData) {
     if (!sensorChart) return;
 
     const label = new Date(newData.timestamp).toLocaleTimeString();
-
     sensorChart.data.labels.push(label);
     sensorChart.data.datasets[0].data.push(newData.humidity);
     sensorChart.data.datasets[1].data.push(newData.light);
@@ -234,26 +292,80 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function initializeDatePickers() {
-    const commonOptions = {
+    const options = {
       enableTime: true,
       dateFormat: "Y-m-d H:i",
       theme: "dark",
     };
-    flatpickr(elements.startDatePicker, commonOptions);
-    flatpickr(elements.endDatePicker, commonOptions);
+    flatpickr(elements.startDatePickerStats, options);
+    flatpickr(elements.endDatePickerStats, options);
+    flatpickr(elements.startDatePickerWatering, options);
+    flatpickr(elements.endDatePickerWatering, options);
+    flatpickr(elements.startDatePickerReadings, options);
+    flatpickr(elements.endDatePickerReadings, options);
   }
 
   function initializeEventListeners() {
     elements.fetchStatsBtn.addEventListener("click", () => {
-      const start = elements.startDatePicker._flatpickr.selectedDates[0];
-      const end = elements.endDatePicker._flatpickr.selectedDates[0];
+      const start = elements.startDatePickerStats._flatpickr.selectedDates[0];
+      const end = elements.endDatePickerStats._flatpickr.selectedDates[0];
       fetchStats(start, end);
+    });
+
+    elements.fetchWateringBtn.addEventListener("click", () => {
+      const start =
+        elements.startDatePickerWatering._flatpickr.selectedDates[0];
+      const end = elements.endDatePickerWatering._flatpickr.selectedDates[0];
+      fetchWateringHistory(start, end);
+    });
+
+    elements.fetchReadingsBtn.addEventListener("click", () => {
+      const start =
+        elements.startDatePickerReadings._flatpickr.selectedDates[0];
+      const end = elements.endDatePickerReadings._flatpickr.selectedDates[0];
+      fetchSensorHistory(start, end);
+    });
+
+    elements.fetchLatestReadingBtn.addEventListener(
+      "click",
+      fetchLatestReading
+    );
+
+    elements.pumpOnBtn.addEventListener("click", () =>
+      sendCommand({ command: "start" })
+    );
+    elements.pumpOffBtn.addEventListener("click", () =>
+      sendCommand({ command: "stop" })
+    );
+
+    elements.saveConfigBtn.addEventListener("click", () => {
+      const config = {
+        umbralLuz: parseInt(elements.lightThresholdInput.value),
+        duracionRiego: parseInt(elements.wateringDurationInput.value),
+        intervaloRiego: parseInt(elements.wateringIntervalInput.value) * 60000, // a milisegundos
+        tipoSuelo: elements.soilTypeSelect.value,
+      };
+
+      // Filtrar valores que no son números o están vacíos
+      const validConfig = Object.entries(config).reduce((acc, [key, value]) => {
+        if (value && !isNaN(value) || typeof value === 'string' && value) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      if (Object.keys(validConfig).length > 0) {
+        sendCommand(validConfig);
+      } else {
+        alert("No hay configuraciones válidas para guardar.");
+      }
     });
   }
 
   initializeChart();
   connectWebSocket();
   fetchWateringHistory();
+  fetchSensorHistory();
   fetchInitialChartData();
   initializeDatePickers();
   initializeEventListeners();

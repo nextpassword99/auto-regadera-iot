@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ArduinoJson.h>
 
 const char *ssid = "weeeeee";
 const char *password = "123";
@@ -20,65 +21,103 @@ enum TipoSuelo
 };
 TipoSuelo tipoSuelo = FRANCO;
 
-const int UMBRAL_LUZ = 2000;
-const int DURACION_RIEGO_MS = 10000;
-const unsigned long INTERVALO_RIEGO_MS = 60000;
+int umbralLuz = 2000;
+int duracionRiego = 10000;
+unsigned long intervaloRiego = 60000;
 
 bool bombaEncendida = false;
 bool modoManual = false;
-
 unsigned long tiempoUltimoRiego = 0;
+
+void configurarServidor();
+void manejarStatus();
+void manejarStart();
+void manejarStop();
+void manejarGetConfig();
+void manejarPostConfig();
+int obtenerUmbralHumedad();
+void manejarRiegoAutomatico();
+String tipoSueloToString(TipoSuelo tipo);
+TipoSuelo stringToTipoSuelo(const String &tipo);
 
 void setup()
 {
     Serial.begin(115200);
-    configurarPines();
-    conectarWiFi();
-    configurarServidorWeb();
+
+    pinMode(PIN_PUMP_IN1, OUTPUT);
+    pinMode(PIN_PUMP_IN2, OUTPUT);
+    pinMode(PIN_PUMP_EN, OUTPUT);
+    apagarBomba();
+
+    WiFi.begin(ssid, password);
+    Serial.print("Conectando a WiFi...");
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("\n✅ Conectado a WiFi");
+    Serial.println("IP: " + WiFi.localIP().toString());
+
+    configurarServidor();
 }
 
 void loop()
 {
     server.handleClient();
 
-    if (!modoManual && millis() - tiempoUltimoRiego >= INTERVALO_RIEGO_MS)
+    if (!modoManual && millis() - tiempoUltimoRiego >= intervaloRiego)
     {
         tiempoUltimoRiego = millis();
         manejarRiegoAutomatico();
     }
 }
 
-void configurarPines()
+void configurarServidor()
 {
-    pinMode(PIN_PUMP_IN1, OUTPUT);
-    pinMode(PIN_PUMP_IN2, OUTPUT);
-    pinMode(PIN_PUMP_EN, OUTPUT);
-    apagarBomba();
-}
-
-void conectarWiFi()
-{
-    Serial.println("Conectando a WiFi...");
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-    Serial.println("\n✅ WiFi conectado");
-    Serial.print("IP local: ");
-    Serial.println(WiFi.localIP());
-}
-
-void configurarServidorWeb()
-{
-    server.on("/", HTTP_GET, manejarRoot);
     server.on("/status", HTTP_GET, manejarStatus);
-    server.on("/start", HTTP_GET, manejarInicioManual);
-    server.on("/stop", HTTP_GET, manejarDetenerManual);
-    server.on("/setsoil", HTTP_GET, manejarCambiarTipoSuelo);
+    server.on("/start", HTTP_POST, manejarStart);
+    server.on("/stop", HTTP_POST, manejarStop);
+    server.on("/config", HTTP_GET, manejarGetConfig);
+    server.on("/config", HTTP_POST, manejarPostConfig);
     server.begin();
-    Serial.println("🌐 Servidor web iniciado");
+    Serial.println("🌐 Servidor HTTP iniciado");
+}
+
+void manejarRiegoAutomatico()
+{
+    int humedad = analogRead(PIN_SENSOR_HUMEDAD);
+    int luz = analogRead(PIN_SENSOR_LUZ);
+
+    Serial.printf("🔍 Humedad: %d | Luz: %d\n", humedad, luz);
+
+    if (humedad > obtenerUmbralHumedad() && luz >= umbralLuz)
+    {
+        Serial.println("🚿 Activando riego automático");
+        encenderBomba();
+        delay(duracionRiego);
+        apagarBomba();
+    }
+    else
+    {
+        Serial.println("🌿 No se requiere riego");
+    }
+}
+
+void encenderBomba()
+{
+    digitalWrite(PIN_PUMP_IN1, HIGH);
+    digitalWrite(PIN_PUMP_IN2, LOW);
+    digitalWrite(PIN_PUMP_EN, HIGH);
+    bombaEncendida = true;
+}
+
+void apagarBomba()
+{
+    digitalWrite(PIN_PUMP_EN, LOW);
+    digitalWrite(PIN_PUMP_IN1, LOW);
+    digitalWrite(PIN_PUMP_IN2, LOW);
+    bombaEncendida = false;
 }
 
 int obtenerUmbralHumedad()
@@ -96,111 +135,85 @@ int obtenerUmbralHumedad()
     }
 }
 
-void manejarRiegoAutomatico()
-{
-    int humedad = analogRead(PIN_SENSOR_HUMEDAD);
-    int luz = analogRead(PIN_SENSOR_LUZ);
-
-    Serial.print("Humedad: ");
-    Serial.print(humedad);
-    Serial.print(" | Luz: ");
-    Serial.print(luz);
-    Serial.print(" (");
-    Serial.print(luz >= UMBRAL_LUZ ? "claro" : "oscuro");
-    Serial.println(")");
-
-    if (humedad > obtenerUmbralHumedad() && luz >= UMBRAL_LUZ)
-    {
-        Serial.println("🚿 Riego activado automáticamente");
-        encenderBomba();
-        delay(DURACION_RIEGO_MS);
-        apagarBomba();
-    }
-    else
-    {
-        Serial.println("✅ Condiciones adecuadas, no se riega");
-    }
-}
-
-void encenderBomba()
-{
-    digitalWrite(PIN_PUMP_IN1, HIGH);
-    digitalWrite(PIN_PUMP_IN2, LOW);
-    digitalWrite(PIN_PUMP_EN, HIGH);
-    bombaEncendida = true;
-    Serial.println("💧 Bomba encendida");
-}
-
-void apagarBomba()
-{
-    digitalWrite(PIN_PUMP_EN, LOW);
-    digitalWrite(PIN_PUMP_IN1, LOW);
-    digitalWrite(PIN_PUMP_IN2, LOW);
-    bombaEncendida = false;
-    Serial.println("💧 Bomba apagada");
-}
-
-void manejarRoot()
-{
-    String html = "<h1>💧 Sistema de Riego Inteligente (ESP32)</h1>";
-    html += "<p>Usa <code>/status</code>, <code>/start</code>, <code>/stop</code> o <code>/setsoil?tipo=franco</code></p>";
-    server.send(200, "text/html", html);
-}
-
 void manejarStatus()
 {
     int humedad = analogRead(PIN_SENSOR_HUMEDAD);
     int luz = analogRead(PIN_SENSOR_LUZ);
 
-    String json = "{";
-    json += "\"humedad\":" + String(humedad) + ",";
-    json += "\"luz\":" + String(luz) + ",";
-    json += "\"nivel_luz\":\"" + String(luz >= UMBRAL_LUZ ? "claro" : "oscuro") + "\",";
-    json += "\"bomba\":\"" + String(bombaEncendida ? "encendida" : "apagada") + "\",";
-    json += "\"modo\":\"" + String(modoManual ? "manual" : "automatico") + "\",";
-    json += "\"suelo\":\"" + tipoSueloToString(tipoSuelo) + "\"";
-    json += "}";
+    DynamicJsonDocument json(256);
+    json["humedad"] = humedad;
+    json["luz"] = luz;
+    json["nivel_luz"] = luz >= umbralLuz ? "claro" : "oscuro";
+    json["bomba"] = bombaEncendida;
+    json["modo"] = modoManual ? "manual" : "automatico";
+    json["suelo"] = tipoSueloToString(tipoSuelo);
 
-    server.send(200, "application/json", json);
+    String response;
+    serializeJson(json, response);
+    server.send(200, "application/json", response);
 }
 
-void manejarInicioManual()
+void manejarStart()
 {
     modoManual = true;
     encenderBomba();
-    server.send(200, "text/plain", "✅ Modo manual activado y bomba encendida");
+    server.send(200, "application/json", "{\"mensaje\":\"Riego manual activado\"}");
 }
 
-void manejarDetenerManual()
+void manejarStop()
 {
     modoManual = false;
     apagarBomba();
-    server.send(200, "text/plain", "⛔ Modo manual desactivado y bomba apagada");
+    server.send(200, "application/json", "{\"mensaje\":\"Riego manual detenido\"}");
 }
 
-void manejarCambiarTipoSuelo()
+void manejarGetConfig()
 {
-    if (!server.hasArg("tipo"))
+    DynamicJsonDocument json(256);
+    json["tipoSuelo"] = tipoSueloToString(tipoSuelo);
+    json["umbralLuz"] = umbralLuz;
+    json["duracionRiego"] = duracionRiego;
+    json["intervaloRiego"] = intervaloRiego;
+
+    String response;
+    serializeJson(json, response);
+    server.send(200, "application/json", response);
+}
+
+void manejarPostConfig()
+{
+    if (server.args() == 0)
     {
-        server.send(400, "text/plain", "❌ Falta el parámetro 'tipo'");
+        server.send(400, "application/json", "{\"error\":\"Falta cuerpo JSON\"}");
         return;
     }
 
-    String tipo = server.arg("tipo");
-
-    if (tipo == "arenoso")
-        tipoSuelo = ARENOSO;
-    else if (tipo == "franco")
-        tipoSuelo = FRANCO;
-    else if (tipo == "arcilloso")
-        tipoSuelo = ARCILLOSO;
-    else
+    DynamicJsonDocument json(512);
+    DeserializationError err = deserializeJson(json, server.arg(0));
+    if (err)
     {
-        server.send(400, "text/plain", "❌ Tipo de suelo inválido. Usa: arenoso, franco o arcilloso");
+        server.send(400, "application/json", "{\"error\":\"JSON inválido\"}");
         return;
     }
 
-    server.send(200, "text/plain", "✅ Tipo de suelo cambiado a: " + tipo);
+    if (json.containsKey("tipoSuelo"))
+    {
+        tipoSuelo = stringToTipoSuelo(json["tipoSuelo"]);
+    }
+    if (json.containsKey("umbralLuz"))
+    {
+        umbralLuz = json["umbralLuz"];
+    }
+    if (json.containsKey("duracionRiego"))
+    {
+        duracionRiego = json["duracionRiego"];
+    }
+    if (json.containsKey("intervaloRiego"))
+    {
+        intervaloRiego = json["intervaloRiego"];
+    }
+
+    server.send(200, "application/json", "{\"mensaje\":\"Configuración actualizada\"}");
 }
 
 String tipoSueloToString(TipoSuelo tipo)
@@ -216,4 +229,15 @@ String tipoSueloToString(TipoSuelo tipo)
     default:
         return "desconocido";
     }
+}
+
+TipoSuelo stringToTipoSuelo(const String &tipo)
+{
+    if (tipo == "arenoso")
+        return ARENOSO;
+    if (tipo == "franco")
+        return FRANCO;
+    if (tipo == "arcilloso")
+        return ARCILLOSO;
+    return FRANCO;
 }

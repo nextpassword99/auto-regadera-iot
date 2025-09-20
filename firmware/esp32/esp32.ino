@@ -81,7 +81,7 @@ void loop()
 
         Serial.printf("📊 Lectura actual -> Humedad: %d | Luz: %d\n", humedad, luz);
 
-        if (humedad > obtenerUmbralHumedad() && luz >= umbralLuz)
+        if (humedad > obtenerUmbralHumedad() && luz <= umbralLuz)
         {
             Serial.println("🚿 Riego automático activado");
             encenderBomba();

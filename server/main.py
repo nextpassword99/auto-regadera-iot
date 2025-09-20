@@ -1,6 +1,7 @@
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import engine, Base, get_db
@@ -9,6 +10,7 @@ from websocket_manager import manager
 import crud
 import schemas
 
+
 print("🚀 Iniciando la aplicación FastAPI...")
 Base.metadata.create_all(bind=engine)
 print("✔️ Tablas de la base de datos verificadas/creadas.")
@@ -16,14 +18,25 @@ print("✔️ Tablas de la base de datos verificadas/creadas.")
 app = FastAPI(
     title="Auto-Regadera API",
     description="API para gestionar y monitorizar un sistema de riego automático con WebSockets.",
-    version="1.2.0",  # Version bump
+    version="1.3.0",
 )
 
-# --- API Routers ---
+
+origins = [
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.include_router(endpoints.router, prefix="/api/v1", tags=["HTTP Endpoints"])
 print("✔️ Routers de la API HTTP incluidos.")
-
-# --- WebSockets ---
 
 
 @app.websocket("/ws/esp32-ingest")
@@ -97,7 +110,6 @@ async def websocket_ui_feed_endpoint(websocket: WebSocket):
         db.close()
 
 
-# --- Root Endpoint ---
 @app.get("/", tags=["Root"])
 def read_root():
     print("🌐 Endpoint raíz '/' fue accedido.")

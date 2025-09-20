@@ -2,16 +2,17 @@ package com.example.ecolim.data.network
 
 import android.util.Log
 import com.example.ecolim.data.models.SensorReading
+import com.example.ecolim.data.preferences.ServerConfigManager
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import okhttp3.*
 import okio.ByteString
 
-class WebSocketClient {
+class WebSocketClient(private val serverConfigManager: ServerConfigManager) {
     companion object {
         private const val TAG = "WebSocketClient"
-        private const val SERVER_URL = "ws://192.168.18.21:8000" // Cambia por tu IP del servidor
+        private const val DEFAULT_SERVER_URL = "ws://192.168.18.21:8000"
         private const val WS_UI_FEED_PATH = "/ws/ui-feed"
     }
 
@@ -27,8 +28,9 @@ class WebSocketClient {
     val connectionStatusFlow: SharedFlow<Boolean> = _connectionStatusFlow
 
     fun connect() {
+        val serverUrl = serverConfigManager.getWebSocketUrl()
         val request = Request.Builder()
-            .url("$SERVER_URL$WS_UI_FEED_PATH")
+            .url("$serverUrl$WS_UI_FEED_PATH")
             .build()
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {

@@ -6,15 +6,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ecolim.data.models.SensorReading
 import com.example.ecolim.data.models.StatsResponse
+import com.example.ecolim.data.preferences.ServerConfigManager
 import com.example.ecolim.data.repository.AutoRegaderaRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class GalleryViewModel : ViewModel() {
+class GalleryViewModel(serverConfigManager: ServerConfigManager) : ViewModel() {
 
-    private val repository = AutoRegaderaRepository()
+    private val repository = AutoRegaderaRepository(serverConfigManager)
 
     // Estados para la UI
     private val _chartData = MutableStateFlow<List<SensorReading>>(emptyList())

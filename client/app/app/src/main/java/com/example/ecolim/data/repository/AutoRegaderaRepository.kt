@@ -4,16 +4,17 @@ import android.util.Log
 import com.example.ecolim.data.models.*
 import com.example.ecolim.data.network.ApiClient
 import com.example.ecolim.data.network.WebSocketClient
+import com.example.ecolim.data.preferences.ServerConfigManager
 import kotlinx.coroutines.flow.SharedFlow
 import retrofit2.Response
 
-class AutoRegaderaRepository {
+class AutoRegaderaRepository(private val serverConfigManager: ServerConfigManager) {
     companion object {
         private const val TAG = "AutoRegaderaRepository"
     }
 
     private val apiService = ApiClient.apiService
-    private val webSocketClient = WebSocketClient()
+    private val webSocketClient = WebSocketClient(serverConfigManager)
 
     // Flows para datos en tiempo real
     val sensorDataFlow: SharedFlow<SensorReading> = webSocketClient.sensorDataFlow

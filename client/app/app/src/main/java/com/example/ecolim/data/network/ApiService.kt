@@ -7,6 +7,7 @@ import retrofit2.http.*
 interface ApiService {
     companion object {
         const val BASE_URL = "http://192.168.18.21:8000" // Cambia por tu IP del servidor
+        const val DEFAULT_BASE_URL = "http://192.168.18.21:8000/" // URL por defecto con slash final
     }
 
     // Endpoints de lecturas de sensores

@@ -5,15 +5,16 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ecolim.data.models.WateringEvent
+import com.example.ecolim.data.preferences.ServerConfigManager
 import com.example.ecolim.data.repository.AutoRegaderaRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class SlideshowViewModel : ViewModel() {
+class SlideshowViewModel(serverConfigManager: ServerConfigManager) : ViewModel() {
 
-    private val repository = AutoRegaderaRepository()
+    private val repository = AutoRegaderaRepository(serverConfigManager)
 
     // Estados para la UI
     private val _wateringEvents = MutableStateFlow<List<WateringEvent>>(emptyList())

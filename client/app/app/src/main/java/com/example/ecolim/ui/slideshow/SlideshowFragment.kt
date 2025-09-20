@@ -5,7 +5,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import com.example.ecolim.EcolimApplication
 import com.example.ecolim.databinding.FragmentSlideshowBinding
+import com.example.ecolim.ui.ViewModelFactory
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog
 import java.text.SimpleDateFormat
 import java.util.*
@@ -15,6 +18,7 @@ class SlideshowFragment : Fragment(), DatePickerDialog.OnDateSetListener {
     private var _binding: FragmentSlideshowBinding? = null
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private var isStartDatePicker = true
+    private lateinit var slideshowViewModel: SlideshowViewModel
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -25,6 +29,10 @@ class SlideshowFragment : Fragment(), DatePickerDialog.OnDateSetListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        val application = requireActivity().application as EcolimApplication
+        val factory = ViewModelFactory(application.serverConfigManager)
+        slideshowViewModel = ViewModelProvider(this, factory)[SlideshowViewModel::class.java]
+        
         _binding = FragmentSlideshowBinding.inflate(inflater, container, false)
         val root: View = binding.root
 

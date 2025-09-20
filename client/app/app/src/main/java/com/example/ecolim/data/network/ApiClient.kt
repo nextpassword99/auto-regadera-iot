@@ -1,5 +1,6 @@
 package com.example.ecolim.data.network
 
+import com.example.ecolim.data.preferences.ServerConfigManager
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -8,6 +9,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
+    private var serverConfigManager: ServerConfigManager? = null
+    
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
@@ -23,11 +26,38 @@ object ApiClient {
         .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
         .create()
 
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(ApiService.BASE_URL)
-        .client(httpClient)
-        .addConverterFactory(GsonConverterFactory.create(gson))
-        .build()
+    private var retrofit: Retrofit? = null
 
-    val apiService: ApiService = retrofit.create(ApiService::class.java)
+    val apiService: ApiService
+        get() {
+            if (retrofit == null) {
+                initializeRetrofit()
+            }
+            return retrofit!!.create(ApiService::class.java)
+        }
+
+    fun initialize(configManager: ServerConfigManager) {
+        serverConfigManager = configManager
+        initializeRetrofit()
+    }
+
+    fun updateServerConfig(configManager: ServerConfigManager) {
+        serverConfigManager = configManager
+        initializeRetrofit()
+    }
+
+    private fun initializeRetrofit() {
+        val baseUrl = serverConfigManager?.getServerUrl() ?: ApiService.DEFAULT_BASE_URL
+        val finalUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+        
+        retrofit = Retrofit.Builder()
+            .baseUrl(finalUrl)
+            .client(httpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    fun getCurrentServerUrl(): String {
+        return serverConfigManager?.getServerUrl() ?: ApiService.DEFAULT_BASE_URL
+    }
 }

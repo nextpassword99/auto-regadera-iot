@@ -7,8 +7,11 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import com.example.ecolim.EcolimApplication
 import com.example.ecolim.R
 import com.example.ecolim.databinding.FragmentHomeBinding
+import com.example.ecolim.ui.ViewModelFactory
 import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
@@ -23,7 +26,10 @@ class HomeFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
+        val application = requireActivity().application as EcolimApplication
+        val factory = ViewModelFactory(application.serverConfigManager)
+        homeViewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
+        
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         
         setupUI()
@@ -36,7 +42,11 @@ class HomeFragment : Fragment() {
         // Configuración inicial de la UI
         updateInitialState()
         
-        // Configurar listeners (se agregarán cuando el layout esté listo)
+        // Configurar listeners
+        binding.btnSettings.setOnClickListener {
+            findNavController().navigate(R.id.nav_settings)
+        }
+        
         // binding.btnRefresh.setOnClickListener {
         //     homeViewModel.refreshData()
         // }
@@ -62,7 +72,7 @@ class HomeFragment : Fragment() {
 
     private fun observeViewModel() {
         // Observar el texto básico por ahora
-        homeViewModel.text.observe(viewLifecycleOwner) { text ->
+        homeViewModel.text.observe(viewLifecycleOwner) { _ ->
             // binding.textHome.text = text
         }
         

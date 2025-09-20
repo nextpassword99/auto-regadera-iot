@@ -5,14 +5,15 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ecolim.data.models.SensorReading
+import com.example.ecolim.data.preferences.ServerConfigManager
 import com.example.ecolim.data.repository.AutoRegaderaRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(serverConfigManager: ServerConfigManager) : ViewModel() {
 
-    private val repository = AutoRegaderaRepository()
+    private val repository = AutoRegaderaRepository(serverConfigManager)
 
     // Estados para la UI
     private val _currentSensorData = MutableStateFlow<SensorReading?>(null)

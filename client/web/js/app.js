@@ -14,11 +14,23 @@ document.addEventListener("DOMContentLoaded", () => {
     liveSoil: document.getElementById("live-soil"),
     livePumpIndicator: document.getElementById("live-pump-indicator"),
     livePumpStatus: document.getElementById("live-pump-status"),
-    startDatePicker: document.getElementById("start-date-picker"),
-    endDatePicker: document.getElementById("end-date-picker"),
+    startDatePickerStats: document.getElementById("start-date-picker-stats"),
+    endDatePickerStats: document.getElementById("end-date-picker-stats"),
     fetchStatsBtn: document.getElementById("fetch-stats-btn"),
     statsResults: document.getElementById("stats-results"),
+    startDatePickerWatering: document.getElementById(
+      "start-date-picker-watering"
+    ),
+    endDatePickerWatering: document.getElementById("end-date-picker-watering"),
+    fetchWateringBtn: document.getElementById("fetch-watering-btn"),
     wateringHistoryBody: document.getElementById("watering-history-body"),
+    startDatePickerReadings: document.getElementById(
+      "start-date-picker-readings"
+    ),
+    endDatePickerReadings: document.getElementById("end-date-picker-readings"),
+    fetchReadingsBtn: document.getElementById("fetch-readings-btn"),
+    fetchLatestReadingBtn: document.getElementById("fetch-latest-reading-btn"),
+    sensorHistoryBody: document.getElementById("sensor-history-body"),
     sensorChartCanvas: document.getElementById("sensor-chart"),
   };
 
@@ -68,9 +80,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function fetchWateringHistory() {
+  async function fetchWateringHistory(start, end) {
     try {
-      const response = await fetch(`${API_BASE_URL}/watering-events/?limit=10`);
+      let url = `${API_BASE_URL}/watering-events/?limit=10`;
+      if (start && end) {
+        url = `${API_BASE_URL}/watering-events/?start_date=${start.toISOString()}&end_date=${end.toISOString()}`;
+      }
+      const response = await fetch(url);
       const events = await response.json();
       elements.wateringHistoryBody.innerHTML = "";
       events.forEach((event) => {
@@ -86,6 +102,49 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } catch (error) {
       console.error("Error al obtener historial de riego:", error);
+    }
+  }
+
+  async function fetchSensorHistory(start, end) {
+    try {
+      let url = `${API_BASE_URL}/readings/?limit=20`;
+      if (start && end) {
+        url = `${API_BASE_URL}/readings/?start_date=${start.toISOString()}&end_date=${end.toISOString()}`;
+      }
+      const response = await fetch(url);
+      const readings = await response.json();
+      elements.sensorHistoryBody.innerHTML = "";
+      readings.forEach((reading) => {
+        const row = `
+          <tr class="bg-gray-800 border-b border-gray-700">
+            <td class="px-4 py-2">${new Date(
+              reading.timestamp
+            ).toLocaleString()}</td>
+            <td class="px-4 py-2">${reading.humidity.toFixed(1)}</td>
+            <td class="px-4 py-2">${(MAX_LIGHT_VALUE - reading.light).toFixed(
+              1
+            )}</td>
+          </tr>`;
+        elements.sensorHistoryBody.innerHTML += row;
+      });
+    } catch (error) {
+      console.error("Error al obtener historial de lecturas:", error);
+    }
+  }
+
+  async function fetchLatestReading() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/readings/latest/`);
+      const reading = await response.json();
+      reading.light = MAX_LIGHT_VALUE - reading.light;
+      updateLiveCards(reading);
+      alert(
+        `Última lectura obtenida a las ${new Date(
+          reading.timestamp
+        ).toLocaleTimeString()}`
+      );
+    } catch (error) {
+      console.error("Error al obtener la última lectura:", error);
     }
   }
 
@@ -213,21 +272,45 @@ document.addEventListener("DOMContentLoaded", () => {
       dateFormat: "Y-m-d H:i",
       theme: "dark",
     };
-    flatpickr(elements.startDatePicker, options);
-    flatpickr(elements.endDatePicker, options);
+    flatpickr(elements.startDatePickerStats, options);
+    flatpickr(elements.endDatePickerStats, options);
+    flatpickr(elements.startDatePickerWatering, options);
+    flatpickr(elements.endDatePickerWatering, options);
+    flatpickr(elements.startDatePickerReadings, options);
+    flatpickr(elements.endDatePickerReadings, options);
   }
 
   function initializeEventListeners() {
     elements.fetchStatsBtn.addEventListener("click", () => {
-      const start = elements.startDatePicker._flatpickr.selectedDates[0];
-      const end = elements.endDatePicker._flatpickr.selectedDates[0];
+      const start = elements.startDatePickerStats._flatpickr.selectedDates[0];
+      const end = elements.endDatePickerStats._flatpickr.selectedDates[0];
       fetchStats(start, end);
     });
+
+    elements.fetchWateringBtn.addEventListener("click", () => {
+      const start =
+        elements.startDatePickerWatering._flatpickr.selectedDates[0];
+      const end = elements.endDatePickerWatering._flatpickr.selectedDates[0];
+      fetchWateringHistory(start, end);
+    });
+
+    elements.fetchReadingsBtn.addEventListener("click", () => {
+      const start =
+        elements.startDatePickerReadings._flatpickr.selectedDates[0];
+      const end = elements.endDatePickerReadings._flatpickr.selectedDates[0];
+      fetchSensorHistory(start, end);
+    });
+
+    elements.fetchLatestReadingBtn.addEventListener(
+      "click",
+      fetchLatestReading
+    );
   }
 
   initializeChart();
   connectWebSocket();
   fetchWateringHistory();
+  fetchSensorHistory();
   fetchInitialChartData();
   initializeDatePickers();
   initializeEventListeners();

@@ -118,13 +118,13 @@
             </h2>
             <div class="flex sm:flex-row flex-col gap-4 mb-4">
               <input
-                id="start-date-picker"
+                id="start-date-picker-stats"
                 type="text"
                 placeholder="Fecha de inicio"
                 class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
               />
               <input
-                id="end-date-picker"
+                id="end-date-picker-stats"
                 type="text"
                 placeholder="Fecha de fin"
                 class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
@@ -146,8 +146,28 @@
             class="md:col-span-2 lg:col-span-2 bg-gray-800 shadow-lg p-5 rounded-lg"
           >
             <h2 class="mb-4 font-semibold text-gray-400 text-lg">
-              Últimos Eventos de Riego
+              Eventos de Riego
             </h2>
+            <div class="flex sm:flex-row flex-col gap-4 mb-4">
+              <input
+                id="start-date-picker-watering"
+                type="text"
+                placeholder="Fecha de inicio"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <input
+                id="end-date-picker-watering"
+                type="text"
+                placeholder="Fecha de fin"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <button
+                id="fetch-watering-btn"
+                class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded w-full sm:w-auto font-bold text-white"
+              >
+                Consultar
+              </button>
+            </div>
             <div class="max-h-60 overflow-auto">
               <table class="w-full text-sm text-left">
                 <thead class="bg-gray-700 text-gray-400 text-xs uppercase">
@@ -173,6 +193,67 @@
                   </tr>
                 </thead>
                 <tbody id="watering-history-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div
+            class="md:col-span-2 lg:col-span-4 bg-gray-800 shadow-lg p-5 rounded-lg"
+          >
+            <h2 class="mb-4 font-semibold text-gray-400 text-lg">
+              Historial de Lecturas de Sensores
+            </h2>
+            <div class="flex sm:flex-row flex-col gap-4 mb-4">
+              <input
+                id="start-date-picker-readings"
+                type="text"
+                placeholder="Fecha de inicio"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <input
+                id="end-date-picker-readings"
+                type="text"
+                placeholder="Fecha de fin"
+                class="bg-gray-700 px-3 py-2 border border-gray-600 rounded w-full text-white"
+              />
+              <button
+                id="fetch-readings-btn"
+                class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded w-full sm:w-auto font-bold text-white"
+              >
+                Consultar
+              </button>
+              <button
+                id="fetch-latest-reading-btn"
+                class="bg-sky-600 hover:bg-sky-700 px-4 py-2 rounded w-full sm:w-auto font-bold text-white"
+              >
+                Última Lectura
+              </button>
+            </div>
+            <div class="max-h-96 overflow-auto">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-gray-700 text-gray-400 text-xs uppercase">
+                  <tr>
+                    <th
+                      scope="col"
+                      class="px-4 py-2"
+                    >
+                      Fecha y Hora
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-4 py-2"
+                    >
+                      Humedad
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-4 py-2"
+                    >
+                      Luz
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="sensor-history-body"></tbody>
               </table>
             </div>
           </div>

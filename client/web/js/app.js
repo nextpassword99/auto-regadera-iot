@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateLiveCards(data) {
     elements.liveHumidity.textContent = data.humidity.toFixed(1);
-    elements.liveLight.textContent = (4095 - data.light).toFixed(1);
+    elements.liveLight.textContent = data.light.toFixed(1);
     elements.liveMode.textContent = data.mode;
     elements.liveSoil.textContent = `Tipo de suelo: ${data.soil_type}`;
     if (data.pump_status) {

@@ -1,6 +1,6 @@
-from fastapi.middleware.cors import CORSMiddleware
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from database import engine, Base, get_db
@@ -9,7 +9,6 @@ from websocket_manager import manager
 import crud
 import schemas
 
-# --- App Initialization ---
 print("🚀 Iniciando la aplicación FastAPI...")
 Base.metadata.create_all(bind=engine)
 print("✔️ Tablas de la base de datos verificadas/creadas.")
@@ -17,22 +16,12 @@ print("✔️ Tablas de la base de datos verificadas/creadas.")
 app = FastAPI(
     title="Auto-Regadera API",
     description="API para gestionar y monitorizar un sistema de riego automático con WebSockets.",
-    version="1.1.0",
+    version="1.2.0",  # Version bump
 )
 
 # --- API Routers ---
 app.include_router(endpoints.router, prefix="/api/v1", tags=["HTTP Endpoints"])
 print("✔️ Routers de la API HTTP incluidos.")
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # --- WebSockets ---
 
@@ -60,20 +49,20 @@ async def websocket_ingest_endpoint(websocket: WebSocket):
                 db_reading = crud.create_sensor_reading(
                     db=db, reading=reading_data)
 
-                reading_dict = schemas.SensorReading.from_orm(
-                    db_reading).dict()
+                json_compatible_reading = jsonable_encoder(db_reading)
 
                 ui_clients_count = len(
                     manager.active_connections.get('ui_clients', []))
                 if ui_clients_count > 0:
-                    await manager.broadcast_json(reading_dict, channel="ui_clients")
+                    await manager.broadcast_json(json_compatible_reading, channel="ui_clients")
                     print(
                         f"📡 Retransmitiendo a {ui_clients_count} clientes UI.")
 
             except json.JSONDecodeError:
-                print(f"❌ JSON inválido recibido del ESP32: {data}")
+                await websocket.send_text(f"Error: Mensaje no es un JSON válido: {data}")
             except Exception as e:
                 print(f"❌ Error procesando mensaje del ESP32: {e}")
+                await websocket.send_text(f"Error procesando el mensaje: {e}")
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, channel="esp32")
@@ -92,9 +81,8 @@ async def websocket_ui_feed_endpoint(websocket: WebSocket):
     try:
         latest_reading = crud.get_latest_sensor_reading(db)
         if latest_reading:
-            reading_dict = schemas.SensorReading.from_orm(
-                latest_reading).dict()
-            await websocket.send_json(reading_dict)
+            json_compatible_reading = jsonable_encoder(latest_reading)
+            await websocket.send_json(json_compatible_reading)
             print(
                 f"📈 Enviando último estado al nuevo cliente UI (ID: {latest_reading.id}).")
 

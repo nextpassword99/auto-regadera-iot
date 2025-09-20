@@ -83,10 +83,4 @@ async def websocket_ui_feed_endpoint(websocket: WebSocket):
 # --- Root Endpoint ---
 @app.get("/", tags=["Root"])
 def read_root():
-    """
-    Endpoint raíz que devuelve un mensaje de bienvenida.
-    """
     return {"message": "Bienvenido a la API de Auto-Regadera"}
-
-# Aquí podrías añadir más routers para diferentes partes de tu aplicación,
-# por ejemplo, para la configuración del dispositivo.

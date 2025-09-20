@@ -1,35 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime, timedelta
+from typing import List, Optional
+from datetime import datetime
 
 from .. import crud, schemas
 from ..database import get_db
 
 router = APIRouter()
 
-@router.post("/readings/", response_model=schemas.SensorReading, summary="Registrar nueva lectura de sensor")
+@router.post("/readings/", response_model=schemas.SensorReading, summary="Registrar nueva lectura de sensor (HTTP)")
 def create_sensor_reading_endpoint(reading: schemas.SensorReadingCreate, db: Session = Depends(get_db)):
     """
-    Endpoint para que el ESP32 o cualquier otro cliente publique una nueva
-    lectura de los sensores. Esta información se almacenará en la base de datos.
+    Endpoint para que un cliente publique una nueva lectura de los sensores vía HTTP.
+    Esta información se almacenará en la base de datos.
     """
     return crud.create_sensor_reading(db=db, reading=reading)
 
-@router.get("/readings/", response_model=List[schemas.SensorReading], summary="Obtener últimas lecturas")
-def read_sensor_readings_endpoint(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("/readings/", response_model=List[schemas.SensorReading], summary="Obtener lecturas con filtros")
+def read_sensor_readings_endpoint(
+    skip: int = 0, 
+    limit: int = 100, 
+    start_date: Optional[datetime] = Query(None, description="Fecha de inicio (formato ISO)"),
+    end_date: Optional[datetime] = Query(None, description="Fecha de fin (formato ISO)"),
+    db: Session = Depends(get_db)
+):
     """
-    Obtiene una lista de las lecturas más recientes de los sensores.
-    Ideal para que la app móvil visualice el historial.
+    Obtiene una lista de lecturas de sensores, con opción de paginación y filtrado por rango de fechas.
     """
-    readings = crud.get_sensor_readings(db, skip=skip, limit=limit)
+    readings = crud.get_sensor_readings(db, skip=skip, limit=limit, start_date=start_date, end_date=end_date)
     return readings
 
 @router.get("/readings/latest/", response_model=schemas.SensorReading, summary="Obtener la lectura más reciente")
 def read_latest_sensor_reading_endpoint(db: Session = Depends(get_db)):
     """
     Devuelve el último estado reportado por los sensores.
-    Útil para un vistazo rápido en la app.
     """
     db_reading = crud.get_latest_sensor_reading(db)
     if db_reading is None:
@@ -44,26 +48,33 @@ def create_watering_event_endpoint(event: schemas.WateringEventCreate, db: Sessi
     return crud.create_watering_event(db=db, event=event)
 
 @router.get("/watering-events/", response_model=List[schemas.WateringEvent], summary="Obtener historial de riegos")
-def read_watering_events_endpoint(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def read_watering_events_endpoint(
+    skip: int = 0, 
+    limit: int = 50,
+    start_date: Optional[datetime] = Query(None, description="Fecha de inicio (formato ISO)"),
+    end_date: Optional[datetime] = Query(None, description="Fecha de fin (formato ISO)"),
+    db: Session = Depends(get_db)
+):
     """
-    Devuelve una lista de los últimos eventos de riego.
+    Devuelve una lista de los últimos eventos de riego, con opción de filtrar por fecha.
     """
-    events = crud.get_watering_events(db, skip=skip, limit=limit)
+    events = crud.get_watering_events(db, skip=skip, limit=limit, start_date=start_date, end_date=end_date)
     return events
 
-@router.get("/stats/last-24h", summary="Obtener estadísticas de las últimas 24 horas")
-def get_stats_last_24h(db: Session = Depends(get_db)):
+@router.get("/stats/", summary="Obtener estadísticas en un rango de fechas")
+def get_stats_in_range(
+    start_date: datetime = Query(..., description="Fecha de inicio (formato ISO)"),
+    end_date: datetime = Query(..., description="Fecha de fin (formato ISO)"),
+    db: Session = Depends(get_db)
+):
     """
     Calcula y devuelve estadísticas agregadas (promedios, min, max)
-    para la humedad y la luz durante las últimas 24 horas.
+    para la humedad y la luz en un rango de fechas específico.
     """
-    start_date = datetime.now() - timedelta(days=1)
-    end_date = datetime.now()
-    
-    readings = crud.get_readings_by_time_range(db, start_date=start_date, end_date=end_date)
+    readings = crud.get_sensor_readings(db, limit=None, start_date=start_date, end_date=end_date) # No limit for stats
     
     if not readings:
-        return {"message": "No hay datos en las últimas 24 horas."}
+        return {"message": f"No hay datos entre {start_date} y {end_date}."}
 
     total_readings = len(readings)
     avg_humidity = sum(r.humidity for r in readings) / total_readings
@@ -74,6 +85,6 @@ def get_stats_last_24h(db: Session = Depends(get_db)):
     return {
         "time_range": {"start": start_date, "end": end_date},
         "total_readings": total_readings,
-        "humidity": {"average": avg_humidity, "max": max_humidity, "min": min_humidity},
-        "light": {"average": avg_light}
+        "humidity": {"average": f"{avg_humidity:.2f}", "max": max_humidity, "min": min_humidity},
+        "light": {"average": f"{avg_light:.2f}"}
     }

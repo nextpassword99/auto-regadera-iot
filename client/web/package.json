@@ -1,0 +1,11 @@
+{
+  "name": "auto-regadera-client",
+  "version": "1.0.0",
+  "description": "Frontend for the auto-regadera project",
+  "scripts": {
+    "build:css": "tailwindcss -i ./css/input.css -o ./css/style.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
+  }
+}

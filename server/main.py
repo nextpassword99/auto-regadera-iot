@@ -1,3 +1,4 @@
+from fastapi.middleware.cors import CORSMiddleware
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
@@ -22,6 +23,16 @@ app = FastAPI(
 # --- API Routers ---
 app.include_router(endpoints.router, prefix="/api/v1", tags=["HTTP Endpoints"])
 print("✔️ Routers de la API HTTP incluidos.")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # --- WebSockets ---
 
